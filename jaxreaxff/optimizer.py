@@ -705,6 +705,7 @@ def train_FF(orig_loss_func,loss_and_grad_func,grad_func,minim_index_lists,subs,
                 selected_params = global_min_params
                 restricted_flag = False
             for j,p in enumerate(params_list):
+                # Sensitivity p[1] NOT USED !!!
                 size = (p[3] - p[2]) * advanced_opts['perc_width_rest_search']
                 par = float(selected_params[j])
                 lower_bound = p[2]

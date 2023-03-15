@@ -93,4 +93,17 @@ export XLA_FLAGS="$XLA_FLAGS --xla_gpu_force_compilation_parallelism=1"
 ```
 This flag can increase the compilation time drastically.
 
+#### Bug in scipy
+
+With `scipy 1.10.1`, one may encounter the following error
+
+```
+ValueError: failed to initialize intent(inout) array -- input not fortran contiguous
+```
+
+This can be fixed by replacing the following file with the one provided in `./debug`
+
+```
+~/.conda/envs/jax-env/lib/python3.8/site-packages/scipy/optimize/_lbfgsb_py.py
+```
 

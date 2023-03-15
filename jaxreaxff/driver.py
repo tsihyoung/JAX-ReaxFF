@@ -347,6 +347,10 @@ def main():
     best_fitness = 10**20
     opt_method = args.opt_method
     num_steps = args.num_steps
+
+    if not os.path.exists(args.out_folder):
+        os.makedirs(args.out_folder)
+
     # remove later
     # Options for LBFGS
     if opt_method == "L-BFGS-B":
@@ -379,30 +383,104 @@ def main():
 
         s=time.time()
         flattened_force_field,global_min_params,global_min,all_params,all_loss_values,f_ev_list,g_ev_list = train_FF(loss_func,new_loss_and_grad,grad_func,
-                                                       minim_index_lists,subsets_with_en_minim,energy_minim_loss_and_grad_function,energy_minim_count,
-                                                       energy_minim_init_LR,energy_minim_multip_LR,list_do_minim,list_num_minim_steps,end_RMSG,
-                                                       selected_params,param_indices,bounds, flattened_force_field,flattened_non_dif_params,
-                                                       structured_training_data, params_list,num_steps,
-                                                       advanced_opts,
-                                                       list_real_atom_counts,
-                                                       list_all_pos,
-                                                       list_all_shift_combs,
-                                                       list_orth_matrices,
-                                                       list_all_type,list_all_mask,
-                                                       list_all_total_charge,
-                                                       list_all_body_2_neigh_list,
-                                                       list_all_dist_mat,
-                                                       list_all_body_2_list,list_all_body_2_map,list_all_body_2_trip_mask,list_all_body_2_distances,
-                                                       list_all_body_3_list,list_all_body_3_map,list_all_body_3_angles,list_all_body_3_shift,
-                                                       list_all_body_4_list,list_all_body_4_map,list_all_body_4_angles,list_all_body_4_shift,
-                                                       list_all_hbond_list,list_all_hbond_mask,list_all_angles_and_dist,list_all_hbond_shift,
-                                                       list_bond_rest,list_angle_rest,list_torsion_rest,
-                                                       inner_minim=0,minim_start_init=True,
-                                                       optimizer=opt_method,optim_options=optim_options)
+            minim_index_lists,subsets_with_en_minim,
+            energy_minim_loss_and_grad_function,energy_minim_count,
+            energy_minim_init_LR,energy_minim_multip_LR,list_do_minim,
+            list_num_minim_steps,end_RMSG,
+            selected_params,param_indices,bounds, flattened_force_field,
+            flattened_non_dif_params,
+            structured_training_data, params_list,num_steps,
+            advanced_opts,
+            list_real_atom_counts,
+            list_all_pos,
+            list_all_shift_combs,
+            list_orth_matrices,
+            list_all_type,list_all_mask,
+            list_all_total_charge,
+            list_all_body_2_neigh_list,
+            list_all_dist_mat,
+            list_all_body_2_list,list_all_body_2_map,list_all_body_2_trip_mask,
+            list_all_body_2_distances,
+            list_all_body_3_list,list_all_body_3_map,list_all_body_3_angles,
+            list_all_body_3_shift,
+            list_all_body_4_list,list_all_body_4_map,list_all_body_4_angles,
+            list_all_body_4_shift,
+            list_all_hbond_list,list_all_hbond_mask,list_all_angles_and_dist,
+            list_all_hbond_shift,
+            list_bond_rest,list_angle_rest,list_torsion_rest,
+            inner_minim=0,minim_start_init=True,
+            optimizer=opt_method,optim_options=optim_options)
 
         e=time.time()
         result = {"time":e-s, "value": global_min, "params": global_min_params}
         results_list.append(result)
+
+        # output ffield and report immediately after each trial
+        if args.save_opt == "all":
+            params = result['params']
+            current_loss = result['value']
+            flattened_force_field = jax.jit(use_selected_parameters,backend=advanced_opts['backend'], static_argnums=(1))(params,param_indices, flattened_force_field)
+            force_field.flattened_force_field = flattened_force_field
+            force_field.unflatten()
+           
+            flattened_force_field = jax.jit(preprocess_force_field,backend=advanced_opts['backend'])(flattened_force_field, flattened_non_dif_params)
+           
+            minim_flag = sum([np.sum(l) for l in list_do_minim]) != 0 and energy_minim_count > 0
+           
+            if minim_flag:
+           
+                list_positions,loss_vals,min_loss,minn_loss_vals,list_RMSG = energy_minim_with_subs(orig_list_all_pos,minim_index_lists,
+                    flattened_force_field,
+                    flattened_non_dif_params,
+                    subsets_with_en_minim,
+                    energy_minim_loss_and_grad_function,
+                    energy_minim_count,
+                    energy_minim_init_LR,
+                    energy_minim_multip_LR,end_RMSG,
+                    advanced_opts)
+           
+                [list_all_dist_mat,list_all_body_2_distances,
+                list_all_body_3_angles,
+                list_all_body_4_angles,
+                list_all_angles_and_dist] = jax.jit(calculate_dist_and_angles, backend=advanced_opts['backend'])(list_positions,list_orth_matrices,list_all_shift_combs,
+                    list_all_body_2_list,
+                    list_all_body_2_map,
+                    list_all_body_3_list,
+                    list_all_body_3_map,
+                    list_all_body_3_shift,
+                    list_all_body_4_list,
+                    list_all_body_4_map,
+                    list_all_body_4_shift,
+                    list_all_hbond_list,
+                    list_all_hbond_shift,
+                    list_all_hbond_mask)
+            else:
+                list_positions = orig_list_all_pos
+           
+            current_loss,indiv_error = loss_func(params,param_indices,flattened_force_field,flattened_non_dif_params,
+                structured_training_data,
+                list_positions,
+                list_all_type,list_all_mask,
+                list_all_total_charge,
+                list_all_shift_combs,
+                list_orth_matrices,
+                list_all_body_2_neigh_list,
+                list_all_dist_mat,
+                list_all_body_2_list,list_all_body_2_map,list_all_body_2_trip_mask,
+                list_all_body_2_distances,
+                list_all_body_3_list,list_all_body_3_map,list_all_body_3_shift,list_all_body_3_angles,
+                list_all_body_4_list,list_all_body_4_map,list_all_body_4_shift,list_all_body_4_angles,
+                list_all_hbond_list,list_all_hbond_mask,list_all_hbond_shift,list_all_angles_and_dist,
+                list_bond_rest,list_angle_rest,list_torsion_rest,
+                list_do_minim,True)
+           
+            new_name = "{}/new_FF_{}_{:.2f}".format(args.out_folder,i+1,current_loss)
+            parse_and_save_force_field(args.init_FF, new_name, force_field)
+           
+            report_name = "{}/report_{}_{:.2f}".format(args.out_folder,i+1,current_loss)
+           
+            produce_error_report(report_name, all_training_items,all_training_items_str, indiv_error)
+        ####################################
 
         if best_fitness > global_min or best_FF == None:
             best_fitness = global_min
@@ -410,117 +488,67 @@ def main():
 
         print("Trial-{} ended, error value: {:.2f}".format(i+1, global_min))
 
-    if not os.path.exists(args.out_folder):
-        os.makedirs(args.out_folder)
+    #if args.save_opt == "best":
+    params = best_FF['params']
+    current_loss = best_FF['value']
+    flattened_force_field = jax.jit(use_selected_parameters,backend=advanced_opts['backend'], static_argnums=(1))(params,param_indices, flattened_force_field)
+    force_field.flattened_force_field = flattened_force_field
+    force_field.unflatten()
 
-    if args.save_opt == "all":
-        for i,res in enumerate(results_list):
-            params = res['params']
-            current_loss = res['value']
-            flattened_force_field = jax.jit(use_selected_parameters,backend=advanced_opts['backend'], static_argnums=(1))(params,param_indices, flattened_force_field)
-            force_field.flattened_force_field = flattened_force_field
-            force_field.unflatten()
+    minim_flag = sum([np.sum(l) for l in list_do_minim]) != 0 and energy_minim_count > 0
+    flattened_force_field = jax.jit(preprocess_force_field,backend=advanced_opts['backend'])(flattened_force_field, flattened_non_dif_params)
 
-            flattened_force_field = jax.jit(preprocess_force_field,backend=advanced_opts['backend'])(flattened_force_field, flattened_non_dif_params)
+    if minim_flag:
 
-            minim_flag = sum([np.sum(l) for l in list_do_minim]) != 0 and energy_minim_count > 0
+        list_positions,loss_vals,min_loss,minn_loss_vals,list_RMSG = energy_minim_with_subs(orig_list_all_pos,minim_index_lists,
+            flattened_force_field,
+            flattened_non_dif_params,
+            subsets_with_en_minim,
+            energy_minim_loss_and_grad_function, 
+            energy_minim_count,
+            energy_minim_init_LR,
+            energy_minim_multip_LR,end_RMSG,
+            advanced_opts)
 
-            if minim_flag:
-
-                list_positions,loss_vals,min_loss,minn_loss_vals,list_RMSG = energy_minim_with_subs(orig_list_all_pos,minim_index_lists,
-                                                                                            flattened_force_field,flattened_non_dif_params,subsets_with_en_minim,
-                                                                                            energy_minim_loss_and_grad_function, energy_minim_count,
-                                                                                            energy_minim_init_LR,energy_minim_multip_LR,end_RMSG,
-                                                                                            advanced_opts)
-
-
-
-
-                [list_all_dist_mat,list_all_body_2_distances,
-                list_all_body_3_angles,
-                list_all_body_4_angles,
-                list_all_angles_and_dist] = jax.jit(calculate_dist_and_angles, backend=advanced_opts['backend'])(list_positions,list_orth_matrices,list_all_shift_combs,
-                                                                                                  list_all_body_2_list,list_all_body_2_map,
-                                                                                                  list_all_body_3_list,list_all_body_3_map,list_all_body_3_shift,
-                                                                                                  list_all_body_4_list,list_all_body_4_map,list_all_body_4_shift,
-                                                                                                  list_all_hbond_list,list_all_hbond_shift,list_all_hbond_mask)
-            else:
-                list_positions = orig_list_all_pos
-
-            current_loss,indiv_error = loss_func(params,param_indices,flattened_force_field,flattened_non_dif_params,
-                                     structured_training_data,
-                                     list_positions,
-                                     list_all_type,list_all_mask,
-                                     list_all_total_charge,
-                                     list_all_shift_combs,
-                                     list_orth_matrices,
-                                     list_all_body_2_neigh_list,
-                                     list_all_dist_mat,
-                                     list_all_body_2_list,list_all_body_2_map,list_all_body_2_trip_mask,list_all_body_2_distances,
-                                     list_all_body_3_list,list_all_body_3_map,list_all_body_3_shift,list_all_body_3_angles,
-                                     list_all_body_4_list,list_all_body_4_map,list_all_body_4_shift,list_all_body_4_angles,
-                                     list_all_hbond_list,list_all_hbond_mask,list_all_hbond_shift,list_all_angles_and_dist,
-                                     list_bond_rest,list_angle_rest,list_torsion_rest,
-                                     list_do_minim,True)
-
-            new_name = "{}/new_FF_{}_{:.2f}".format(args.out_folder,i+1,current_loss)
-            parse_and_save_force_field(args.init_FF, new_name, force_field)
-
-            report_name = "{}/report_{}_{:.2f}".format(args.out_folder,i+1,current_loss)
-
-            produce_error_report(report_name, all_training_items,all_training_items_str, indiv_error)
+        [list_all_dist_mat,list_all_body_2_distances,
+        list_all_body_3_angles,
+        list_all_body_4_angles,
+        list_all_angles_and_dist] = jax.jit(calculate_dist_and_angles, backend=advanced_opts['backend'])(list_positions,list_orth_matrices,list_all_shift_combs,
+            list_all_body_2_list,
+            list_all_body_2_map,
+            list_all_body_3_list,
+            list_all_body_3_map,
+            list_all_body_3_shift,
+            list_all_body_4_list,
+            list_all_body_4_map,
+            list_all_body_4_shift,
+            list_all_hbond_list,
+            list_all_hbond_shift,
+            list_all_hbond_mask)
     else:
-        params = best_FF['params']
-        current_loss = best_FF['value']
-        flattened_force_field = jax.jit(use_selected_parameters,backend=advanced_opts['backend'], static_argnums=(1))(params,param_indices, flattened_force_field)
-        force_field.flattened_force_field = flattened_force_field
-        force_field.unflatten()
+        list_positions = orig_list_all_pos
 
-        minim_flag = sum([np.sum(l) for l in list_do_minim]) != 0 and energy_minim_count > 0
-        flattened_force_field = jax.jit(preprocess_force_field,backend=advanced_opts['backend'])(flattened_force_field, flattened_non_dif_params)
+    current_loss,indiv_error = loss_func(params,param_indices,flattened_force_field,flattened_non_dif_params,
+        structured_training_data,
+        list_positions,
+        list_all_type,list_all_mask,
+        list_all_total_charge,
+        list_all_shift_combs,
+        list_orth_matrices,
+        list_all_body_2_neigh_list,
+        list_all_dist_mat,
+        list_all_body_2_list,list_all_body_2_map,list_all_body_2_trip_mask,list_all_body_2_distances,
+        list_all_body_3_list,list_all_body_3_map,list_all_body_3_shift,list_all_body_3_angles,
+        list_all_body_4_list,list_all_body_4_map,list_all_body_4_shift,list_all_body_4_angles,
+        list_all_hbond_list,list_all_hbond_mask,list_all_hbond_shift,list_all_angles_and_dist,
+        list_bond_rest,list_angle_rest,list_torsion_rest,
+        list_do_minim,True)
 
-        if minim_flag:
+    new_name = "{}/best_FF_{:.2f}".format(args.out_folder,current_loss)
+    parse_and_save_force_field(args.init_FF, new_name, force_field)
 
-            list_positions,loss_vals,min_loss,minn_loss_vals,list_RMSG = energy_minim_with_subs(orig_list_all_pos,minim_index_lists,
-                                                                                        flattened_force_field,flattened_non_dif_params,subsets_with_en_minim,
-                                                                                        energy_minim_loss_and_grad_function, energy_minim_count,
-                                                                                        energy_minim_init_LR,energy_minim_multip_LR,end_RMSG,
-                                                                                        advanced_opts)
-
-
-
-            [list_all_dist_mat,list_all_body_2_distances,
-            list_all_body_3_angles,
-            list_all_body_4_angles,
-            list_all_angles_and_dist] = jax.jit(calculate_dist_and_angles, backend=advanced_opts['backend'])(list_positions,list_orth_matrices,list_all_shift_combs,
-                                                                                              list_all_body_2_list,list_all_body_2_map,
-                                                                                              list_all_body_3_list,list_all_body_3_map,list_all_body_3_shift,
-                                                                                              list_all_body_4_list,list_all_body_4_map,list_all_body_4_shift,
-                                                                                              list_all_hbond_list,list_all_hbond_shift,list_all_hbond_mask)
-        else:
-            list_positions = orig_list_all_pos
-
-        current_loss,indiv_error = loss_func(params,param_indices,flattened_force_field,flattened_non_dif_params,
-                                 structured_training_data,
-                                 list_positions,
-                                 list_all_type,list_all_mask,
-                                 list_all_total_charge,
-                                 list_all_shift_combs,
-                                 list_orth_matrices,
-                                 list_all_body_2_neigh_list,
-                                 list_all_dist_mat,
-                                 list_all_body_2_list,list_all_body_2_map,list_all_body_2_trip_mask,list_all_body_2_distances,
-                                 list_all_body_3_list,list_all_body_3_map,list_all_body_3_shift,list_all_body_3_angles,
-                                 list_all_body_4_list,list_all_body_4_map,list_all_body_4_shift,list_all_body_4_angles,
-                                 list_all_hbond_list,list_all_hbond_mask,list_all_hbond_shift,list_all_angles_and_dist,
-                                 list_bond_rest,list_angle_rest,list_torsion_rest,
-                                 list_do_minim,True)
-
-        new_name = "{}/best_FF_{:.2f}".format(args.out_folder,current_loss)
-        parse_and_save_force_field(args.init_FF, new_name, force_field)
-
-        report_name = "{}/best_report_{:.2f}".format(args.out_folder,current_loss)
-        produce_error_report(report_name, all_training_items,all_training_items_str, indiv_error)
+    report_name = "{}/best_report_{:.2f}".format(args.out_folder,current_loss)
+    produce_error_report(report_name, all_training_items,all_training_items_str, indiv_error)
 
 
 if __name__ == "__main__":
