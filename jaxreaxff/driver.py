@@ -58,17 +58,17 @@ def main():
         help='Optimization method - "L-BFGS-B" or "SLSQP"')
     parser.add_argument('--num_trials', metavar='number',
         type=int,
-        choices=range(1, 1000),
+        choices=range(1, 100000),
         default=1,
         help='Number of trials')
     parser.add_argument('--num_steps', metavar='number',
         type=int,
-        choices=range(1, 1000),
+        choices=range(1, 100000),
         default=20,
         help='Number of optimization steps per trial')
     parser.add_argument('--rest_search_start', metavar='number',
         type=int,
-        choices=range(-1, 1001),
+        choices=range(-1, 100001),
         default=-1,
         help='R|Restrict the search space after epoch > rest_search_start.\n' +
         '-1 means to restricted search')

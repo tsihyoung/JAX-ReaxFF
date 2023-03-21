@@ -2278,7 +2278,7 @@ def parse_geo_file(geo_file):
 
                 if line.find('SINGLE') > -1:
                     do_minimization = False
-                    max_it = 0 # means full minimization
+                    max_it = 0 # means no minimization
 
                 elif line.find('NORMAL RUN') > -1:
                     do_minimization = True
