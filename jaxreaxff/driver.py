@@ -217,7 +217,7 @@ def main():
     print("After removing geometries that are not used in the trainset file:")
     print("[INFO] Geometry file is read, there are {} geometries and {} require energy minimization!".format(len(systems), do_minim_count))
     ###########################################################################
-    num_threads = os.cpu_count() * 2 # twice the number of availabe cores
+    num_threads = os.cpu_count() # twice the number of availabe cores
     if args.num_threads > 0:
         num_threads = args.num_threads
 
