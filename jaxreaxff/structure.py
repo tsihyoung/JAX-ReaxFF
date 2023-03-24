@@ -60,10 +60,23 @@ def orthogonalization_matrix(box_lengths, angles_degr):
         cosphi = 1.0
     sinphi = onp.sqrt(1.0 - cosphi*cosphi)
     #tm11,tm21,tm31,tm22,tm32,tm33
+    #### If use these basis vectors, c should along z axis when calculating cartesian coordinates.
+    # mat =  onp.array((
+            # (a * sinb * sinphi,       0.0,                0.0),
+            # (a * sinb * cosphi,      b * sina,           0.0),
+            # (a *  cosb,              b * cosa,            c)),
+            # dtype=TYPE)
+
+    lx = a
+    xy = b * cosg
+    xz = c * cosb
+    ly = onp.sqrt(b**2 - xy**2)
+    yz = (b * c * cosa - xy * xz) / ly
+    lz = onp.sqrt(c**2 - xz**2 - yz**2)
     mat =  onp.array((
-            (a * sinb * sinphi,       0.0,                0.0),
-            (a * sinb * cosphi,      b * sina,           0.0),
-            (a *  cosb,              b * cosa,            c)),
+            ( lx,  xy, xz),
+            (0.0,  ly, yz),
+            (0.0, 0.0, lz)),
             dtype=TYPE)
 
     if angles_degr[0] == 90.0 and angles_degr[1] == 90.0 and angles_degr[2] == 90.0:
@@ -78,7 +91,8 @@ def orthogonalization_matrix(box_lengths, angles_degr):
     mat[:,0] = mat[:,0] / box_norms[0]
     mat[:,1] = mat[:,1] / box_norms[1]
     mat[:,2] = mat[:,2] / box_norms[2]
-    '''
+    ''' 
+    # Note that the columns of mat are basis vectors.
     return mat
 
 def project_onto_orth_box(box_size,box_angles,positions):
@@ -123,6 +137,9 @@ class Structure:
             self.kx_limit = math.ceil(FAR_NEIGH_CUTOFF / self.orth_matrix[0,0])
             self.ky_limit = math.ceil(FAR_NEIGH_CUTOFF / self.orth_matrix[1,1])
             self.kz_limit = math.ceil(FAR_NEIGH_CUTOFF / self.orth_matrix[2,2])
+            # self.kx_limit = math.ceil(FAR_NEIGH_CUTOFF / self.box_size[0])
+            # self.ky_limit = math.ceil(FAR_NEIGH_CUTOFF / self.box_size[1])
+            # self.kz_limit = math.ceil(FAR_NEIGH_CUTOFF / self.box_size[2])
             #TODO remove it
             #kx_limit = ky_limit = kz_limit = 0
 
@@ -203,6 +220,8 @@ class Structure:
         shifted_tiled_atom_pos1_trans = tiled_atom_pos1_trans + shift_pos
         diff = tiled_atom_pos1 - shifted_tiled_atom_pos1_trans
         distance_matrix = safe_sqrt(np.square(diff).sum(axis=2))
+        # distance_matrix(i, j)
+        # distance between atoms (i, j). i in the central cell, j in shifted cell
         return distance_matrix
 
 
