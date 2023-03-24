@@ -392,7 +392,7 @@ def pool_handler_for_inter_list_generation(systems,flattened_force_field,force_f
          s.global_hbond_inter_list_mask,
          s.global_hbond_count] = all_inter_lists[i][5]
 
-# can be usedfor multi processing
+# can be used for multi processing
 def create_inter_lists(is_periodic,
                     do_minim,
                     num_atoms,

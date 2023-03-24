@@ -1229,17 +1229,21 @@ def calculate_eem_charges(atom_types,atom_mask,total_charge,hulp1_mat,tapering_m
     # create the matrix
     A = np.zeros(shape=(num_atoms + 1, num_atoms + 1), dtype=TYPE)
     A = jax.ops.index_update(A, jax.ops.index[num_atoms, :num_atoms], atom_mask)
-    A = jax.ops.index_update(A, jax.ops.index[:num_atoms, num_atoms], atom_mask)
+    # if use atom_mask instead, chi_eq will be the opposite of the correct value
+    A = jax.ops.index_update(A, jax.ops.index[:num_atoms, num_atoms], - atom_mask.astype(float))
 
+    # note that hulp1_mat.shape = (number of cells, num_atoms, num_atoms)
     hulp2_mat = hulp1_mat**(1.0/3.0)
 
     #new_sub_A = tapering_matrices * 14.4 / hulp2_mat
     new_sub_A = vectorized_cond(hulp2_mat == 0.0, lambda x: 0.0, lambda x: tapering_matrices * 14.4 / hulp2_mat, hulp2_mat)
-    # Now new_sub_A = array((tapering_matrices * 14.4 / hulp2_mat)(hulp2_mat))
     #new_sub_A = np.where(hulp2_mat == 0, 0.0,  tapering_matrices * 14.4 / hulp2_mat)
-    A_sub_mat = np.sum(new_sub_A, axis=0)
-    # Now A_sub_mat = tapering_matrices * 14.4 / hulp2_mat
+    # Now new_sub_A = (tapering_matrices * 14.4 / hulp2_mat)(hulp2_mat)
+    #               = tapering_matrices * 14.4 / hulp2_mat
 
+    # ref: J. Phys. Chem., Vol. 100, No. 14, 1996, eq. 3
+    # sum over all cells
+    A_sub_mat = np.sum(new_sub_A, axis=0)
     di = np.diag_indices(num_atoms)
     A_sub_mat = jax.ops.index_update(A_sub_mat, jax.ops.index[di], 2.0 * idempotential[atom_types] + A_sub_mat[di])
 
