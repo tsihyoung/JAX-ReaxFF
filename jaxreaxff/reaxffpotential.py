@@ -1204,16 +1204,11 @@ def calculate_vdw_pot(atom_types,atom_mask,distance_matrices,tapering_matrices, 
 def calculate_coulomb_pot(atom_types, hulp1_mat,tapering_matrices, charges, gamma):
     num_atoms = len(atom_types)
     charge_mat = charges.reshape(-1,1).dot(charges.reshape(1,-1))
-    di = np.diag_indices(num_atoms)
 
     #eph_mat = np.where(hulp1_mat == 0, 0.0,  c1c * charge_mat / (hulp1_mat ** (1.0/3.0)))
     eph_mat = c1c * charge_mat / (hulp1_mat ** (1.0/3.0))
     ephtap_mat = eph_mat * tapering_matrices
-    #half the self potential
-    self_multip = np.ones((num_atoms,num_atoms))
-    self_multip = jax.ops.index_update(self_multip, jax.ops.index[di], 0.5)
-    ephtap_mat = ephtap_mat * self_multip
-    total_pot = np.sum(np.triu(np.sum(ephtap_mat,axis=0)))
+    total_pot = np.sum(ephtap_mat) / 2.0
 
     return total_pot
 def calculate_charge_energy(atom_types, charges, idempotential, electronegativity):
