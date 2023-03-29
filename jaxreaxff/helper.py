@@ -1535,7 +1535,6 @@ def parse_and_save_force_field(old_ff_file, new_ff_file,force_field):
 
     for _ in range(num_off_diag):
         # first line
-        # first line
         line = f.readline()
         tmp = line.strip().split()
         line = list(line)
@@ -1830,6 +1829,7 @@ def parse_force_field(force_field_file, cutoff2):
             force_field.params_to_indices[(2,i+1,28)] = (27, i)
             force_field.params_to_indices[(2,i+1,29)] = (37, i)
 
+            # change valency_val (valence angle energy) to valency_boc (valency for 1,3-BO correction)
             if force_field.amas[i] < 21.0:
                 force_field.vval3[i] = force_field.valf[i]
 
@@ -2048,9 +2048,13 @@ def parse_force_field(force_field_file, cutoff2):
     line = f.readline().strip()
     num_tors_params = int(line.split()[0])
     torsion_param_sets = set()
+    line_buffer = []
     for tors in range(num_tors_params):
         line = f.readline().strip()
-        split_line = line.split()
+        line_buffer.append(line.split())
+
+    for tors in range(num_tors_params):
+        split_line = line_buffer[tors]
         ind1 = int(split_line[0])
         ind2 = int(split_line[1])
         ind3 = int(split_line[2])
@@ -2070,7 +2074,6 @@ def parse_force_field(force_field_file, cutoff2):
         ind4 = ind4 - 1 #index starts from 0
 
 
-        # TODO: handle 0 indices in the param. file later
         if (ind1 > -1 and ind4 > -1 and
             ind1 in MY_ATOM_INDICES and ind2 in MY_ATOM_INDICES and
             ind3 in MY_ATOM_INDICES and ind4 in MY_ATOM_INDICES):
@@ -2109,7 +2112,28 @@ def parse_force_field(force_field_file, cutoff2):
 
             force_field.torsion_params_mask[ind4,ind3,ind2,ind1] = 1
 
-        elif (ind1 == -1 and ind4 == -1):
+    for tors in range(num_tors_params):
+        split_line = line_buffer[tors]
+        ind1 = int(split_line[0])
+        ind2 = int(split_line[1])
+        ind3 = int(split_line[2])
+        ind4 = int(split_line[3])
+
+        v1 = float(split_line[4])
+        v2 = float(split_line[5])
+        v3 = float(split_line[6])
+        v4 = float(split_line[7])
+        vconj = float(split_line[8])
+        #v2bo = float(split_line[9])
+        #v3bo = float(split_line[10])
+
+        ind1 = ind1 - 1 #index starts from 0
+        ind2 = ind2 - 1 #index starts from 0
+        ind3 = ind3 - 1 #index starts from 0
+        ind4 = ind4 - 1 #index starts from 0
+
+        if (ind1 == -1 and ind4 == -1 and
+            ind2 in MY_ATOM_INDICES and ind3 in MY_ATOM_INDICES):
             # Last index is reserved for this part
             sel_ind = force_field.total_num_atom_types - 1
             force_field.params_to_indices[(6,tors+1, 1)] = (66, (sel_ind, ind2, ind3, sel_ind))
