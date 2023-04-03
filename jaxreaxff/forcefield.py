@@ -53,7 +53,7 @@ body_4_indices_dst = [[],[],[],[]]
 hbond_indices_src = [[],[],[]]
 hbond_indices_dst = [[],[],[]]
 
-TYPE = onp.float32
+TYPE = onp.float64
 c1c=332.0638      #Coulomb energy conversion
 
 rdndgr=180.0/onp.pi
