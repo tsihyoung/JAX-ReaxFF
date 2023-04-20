@@ -246,7 +246,7 @@ def calculate_total_energy(flattened_force_field,flattened_non_dif_params, types
     #print(torsion_pot, tor_conj)
     #print(overunder_pot)
     #print(torsion_pot,tor_conj)
-    #print(cou_pot , vdw_pot , charge_pot , cov_pot ,lone_pot , val_pot, total_penalty, total_conj,overunder_pot, tor_conj, torsion_pot,h_pot)
+    #print(cov_pot, overunder_pot, lone_pot, val_pot, total_penalty, total_conj, h_pot, torsion_pot, tor_conj, vdw_pot, cou_pot, charge_pot)
     return (cou_pot + vdw_pot + charge_pot +
          cov_pot + lone_pot + val_pot + total_penalty + total_conj + overunder_pot + tor_conj + torsion_pot + h_pot),charges[:-1]
 
@@ -616,10 +616,10 @@ def calculate_lonpar_pot(atom_types,
                              aval, stlp,
                              vlp1, par_16):
     #Determine number of lone pairs on atoms
-    voptlp = 0.5 * (stlp[atom_types] - aval[atom_types])
-    vund = abo - stlp[atom_types]
-    vund_div2 = smooth_lone_pair_casting(vund/2.0) # (vund/2.0).astype(np.int32)
-    #vund_div2 = (vund/2.0).astype(np.int32)
+    voptlp = 0.5 * (stlp[atom_types] - aval[atom_types]) # 0.5 (valence_e - valency)
+    vund = abo - stlp[atom_types] # total_bond_order - valence_e
+    #vund_div2 = smooth_lone_pair_casting(vund/2.0)
+    vund_div2 = (vund/2.0).astype(np.int32)
     vlph = 2.0 * vund_div2
     vlpex = vund - vlph
 
