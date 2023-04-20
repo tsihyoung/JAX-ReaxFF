@@ -865,7 +865,7 @@ def calculate_boncor_pot(num_atoms,body_2_global_list,body_2_global_list_mask,bo
     corr2 = hulj/(hulj+ovcor)
     corrtot = 0.50*(corr1+corr2)
 
-    corrtot = np.where(my_ovc > 0.001, corrtot, 1.0)
+    corrtot = np.where(my_ovc >= 0.001, corrtot, 1.0)
 
     my_v13cor = v13cor[type_indices[0], type_indices[1]]
 
@@ -897,8 +897,8 @@ def calculate_boncor_pot(num_atoms,body_2_global_list,body_2_global_list_mask,bo
     bocor1=1.0/(1.0+exphu3)
     bocor2=1.0/(1.0+exphu4)
 
-    bocor1 = np.where(my_v13cor > 0.001, bocor1, 1.0)
-    bocor2 = np.where(my_v13cor > 0.001, bocor2, 1.0)
+    bocor1 = np.where(my_v13cor >= 0.001, bocor1, 1.0)
+    bocor2 = np.where(my_v13cor >= 0.001, bocor2, 1.0)
 
     #print("corrtot",corrtot)
     #print("bocor1",bocor1)
